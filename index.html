@@ -5,20 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Лесная Академия</title>
     <!--
-      VK Bridge SDK.
-      ВАЖНО: файла dist/index.umd.js в пакете @vkontakte/vk-bridge не существует —
-      unpkg отдаёт на него 404, поэтому vkBridge не определялся вообще.
-      Официальный файл для подключения через <script> — dist/browser.min.js
-      (он выставляет глобальные window.vkBridge и window.vkConnect).
-
-      Скрипт грузится динамически, без блокировки отрисовки, и с резервным CDN.
-      Игра стартует сразу и НЕ ждёт VK: если оба CDN недоступны (частая ситуация
-      в РФ и в WebView ВК), игра всё равно откроется — просто без рекламы.
-
-      Рекомендация для 100% надёжности: скачайте
-      https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js
-      в папку проекта как vk-bridge.min.js и добавьте в начало
-      списка LA_BRIDGE_SOURCES строку './vk-bridge.min.js'.
+      VK Bridge SDK с отказоустойчивой динамической загрузкой.
+      Если сеть/CDN временно недоступны в мобильном клиенте, игра не зависает,
+      а сразу запускается и работает локально.
     -->
     <script>
         window.__laBridgeReady = false;
@@ -28,19 +17,16 @@
         window.__laOnBridgeReady = function () {
             window.__laBridgeReady = true;
             window.__laBridgeFailed = false;
-            console.info('[Лесная Академия] VK Bridge загружен');
+            console.info('[Лесная Академия] VK Bridge успешно подключён');
             const list = window.__laBridgeCallbacks.splice(0);
             list.forEach(function (fn) { try { fn(); } catch (e) {} });
         };
 
         window.__laOnBridgeFailed = function () {
             window.__laBridgeFailed = true;
-            // Игра обязана работать и без VK Bridge — просто без рекламы.
-            console.warn('[Лесная Академия] VK Bridge недоступен (CDN не отвечает). ' +
-                'Игра запустится, но без рекламы. Проверка: window.__laDiagnostics()');
+            console.warn('[Лесная Академия] VK Bridge недоступен, игра работает автономно');
         };
 
-        // Порядок источников: локальная копия (если положите рядом) → unpkg → jsDelivr
         window.LA_BRIDGE_SOURCES = [
             'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js',
             'https://cdn.jsdelivr.net/npm/@vkontakte/vk-bridge/dist/browser.min.js'
@@ -48,17 +34,14 @@
 
         (function loadVKBridge() {
             let index = 0;
-
             function tryNext() {
                 if (index >= window.LA_BRIDGE_SOURCES.length) {
                     window.__laOnBridgeFailed();
                     return;
                 }
-
                 const url = window.LA_BRIDGE_SOURCES[index++];
                 const tag = document.createElement('script');
                 tag.src = url;
-
                 tag.onload = function () {
                     if (typeof window.vkBridge !== 'undefined') {
                         window.__laOnBridgeReady();
@@ -66,15 +49,11 @@
                         tryNext();
                     }
                 };
-
                 tag.onerror = function () {
-                    // Источник недоступен — пробуем следующий, игру не блокируем.
                     tryNext();
                 };
-
                 document.head.appendChild(tag);
             }
-
             tryNext();
         })();
     </script>
@@ -305,6 +284,22 @@
             background: #cbd5e1;
         }
 
+        .speaker-btn {
+            background: #e0f2fe;
+            border: 2px solid #bae6fd;
+            border-radius: 14px;
+            padding: 8px 14px;
+            font-size: 1.3rem;
+            cursor: pointer;
+            min-width: auto;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        .speaker-btn:active {
+            transform: scale(0.92);
+            background: #bae6fd;
+        }
+
         /* Стили дерева и полива */
         .tree-stage-wrapper {
             position: relative;
@@ -411,8 +406,7 @@
             padding: 20px;
         }
 
-        /* Показ окна победы: класс надёжнее, чем inline-стиль display */
-        .modal-overlay.open { display: flex; }
+        .modal-overlay.open { display: flex !important; }
 
         .modal-card {
             background: #fff;
@@ -430,9 +424,7 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* ===== Экран/баннер ошибки запуска ===== */
-        /* Пока игра не инициализирована, прячем рабочую область,
-           чтобы вместо «пустого экрана» показывался статус загрузки. */
+        /* Экран загрузки и ошибок */
         body:not(.la-ready) #app { visibility: hidden; }
 
         #boot-status {
@@ -468,40 +460,20 @@
         }
 
         #fatal-error.open { display: block; }
-
-        #fatal-error h4 { margin: 0 0 6px 0; font-size: 1rem; }
-
-        #fatal-error .fatal-msg {
-            font-family: ui-monospace, Consolas, monospace;
-            font-size: 0.8rem;
-            background: #ffe0b2;
-            border-radius: 8px;
-            padding: 6px 8px;
-            margin: 4px 0 8px 0;
-            word-break: break-word;
-            max-height: 90px;
-            overflow: auto;
-        }
     </style>
 </head>
 <body>
 
-<!-- Показывается только до успешной инициализации игры -->
 <div id="boot-status">
     <div style="font-size: 2.6rem;">🌳</div>
     <div><b>Лесная Академия</b></div>
     <div style="color:#64748b; font-size:0.95rem;">Загрузка игры…</div>
-    <noscript>
-        <div style="color:#b91c1c; font-size:0.95rem;">Похоже, в браузере отключён JavaScript. Включите его, чтобы игра работала.</div>
-    </noscript>
 </div>
 
-<!-- Понятное сообщение, если игра не смогла загрузиться -->
-<div id="fatal-error" role="alert">
-    <h4>⚠️ Игра не смогла полностью загрузиться</h4>
-    <div>Закройте и откройте приложение заново. Если не помогло — обновите страницу.</div>
-    <div class="fatal-msg" id="fatal-error-text"></div>
-    <button class="btn" style="padding:8px 18px; font-size:0.9rem;" onclick="location.reload()">🔄 Перезагрузить</button>
+<div id="fatal-error">
+    <b>⚠️ Ошибка загрузки</b>
+    <div id="fatal-error-text" style="font-size:0.85rem; margin: 4px 0;"></div>
+    <button class="btn" style="padding:6px 16px; font-size:0.85rem;" onclick="location.reload()">Перезагрузить</button>
 </div>
 
 <div id="app">
@@ -536,17 +508,23 @@
     <main class="screen" id="words-screen">
         <div class="progress-dots" id="words-progress"></div>
         <h3>Собери слово по буквам</h3>
-        <p id="word-hint" style="font-weight: 500; min-height: 24px; color: #475569; margin: 4px 0;">Загрузка...</p>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0; min-height: 38px;">
+            <p id="word-hint" style="font-weight: 500; color: #475569; margin: 0;">Загрузка...</p>
+            <button class="speaker-btn" onclick="repeatWordHint()" title="Повторить подсказку вслух">🔊</button>
+        </div>
         <div class="word-letters" id="word-boxes"></div>
         <div class="choices" id="letter-choices"></div>
-        <small style="color: #94a3b8; margin-top: 12px;">Нажми на букву в слове, чтобы вернуть её</small>
+        <small style="color: #94a3b8; margin-top: 12px;">Нажми на букву в слове, чтобы вернуть её назад</small>
     </main>
 
     <!-- 3. Экран: Счёт -->
     <main class="screen" id="math-screen">
         <div class="progress-dots" id="math-progress"></div>
         <h3>Посчитай пример</h3>
-        <h1 id="math-task" style="font-size: 2.8rem; margin: 16px 0; color: #1e293b;">2 + 3 = ?</h1>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 14px; margin: 12px 0;">
+            <h1 id="math-task" style="font-size: 2.8rem; margin: 0; color: #1e293b;">2 + 3 = ?</h1>
+            <button class="speaker-btn" onclick="repeatMathTask()" title="Повторить пример вслух">🔊</button>
+        </div>
         <div class="choices" id="math-choices"></div>
     </main>
 
@@ -582,7 +560,7 @@
     <!-- 6. Экран: Стрельба -->
     <main class="screen" id="game-screen">
         <h3 style="margin-bottom: 4px;">Лесной Снайпер</h3>
-        <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: #475569;">Оттяни рогатку назад по точкам прицела и сбей мишень!</p>
+        <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: #475569;">Оттяни рогатку назад и сбей мишень!</p>
         <canvas id="birdCanvas" width="360" height="270"></canvas>
         <button class="btn" style="margin-top: 12px; padding: 10px 22px; font-size: 0.95rem;" onclick="resetAngryBirdLevel()">Перезарядить</button>
     </main>
@@ -606,11 +584,16 @@
     // === 1. ЗВУКОВОЙ СИНТЕЗАТОР (Web Audio API) ===
     let audioCtx = null;
 
-    function playTone(type) {
+    function initAudioContext() {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) {}
+    }
 
+    function playTone(type) {
+        try {
+            initAudioContext();
             const now = audioCtx.currentTime;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -657,30 +640,25 @@
     }
 
     // === 2. VK BRIDGE И МОНЕТИЗАЦИЯ ===
-    // Библиотека грузится асинхронно, поэтому наличие vkBridge проверяется
-    // в момент вызова, а не один раз при загрузке страницы.
     let vkInitialized = false;
     let lastInterstitialTime = 0;
-    const AD_COOLDOWN = 210000; // 3.5 минуты между межстраничными показами
+    const AD_COOLDOWN = 210000;
 
     function isBridgeAvailable() {
         return typeof window.vkBridge !== 'undefined' && window.vkBridge !== null;
     }
 
-    // Отправка события в VK Bridge с защитой от зависания.
-    // Если VK не отвечает, промис всё равно завершается — игра не «залипает».
     function bridgeSend(method, params, timeoutMs) {
         return new Promise((resolve, reject) => {
             if (!isBridgeAvailable()) {
                 reject(new Error('VK Bridge недоступен'));
                 return;
             }
-
             let settled = false;
             const timer = setTimeout(() => {
                 if (!settled) {
                     settled = true;
-                    reject(new Error('VK Bridge не ответил за ' + (timeoutMs || 15000) + ' мс'));
+                    reject(new Error('Timeout ' + (timeoutMs || 15000) + ' ms'));
                 }
             }, timeoutMs || 15000);
 
@@ -697,27 +675,18 @@
 
     function initVKBridge() {
         if (!isBridgeAvailable()) return;
-
-        // VKWebAppInit обязателен и должен уйти как можно раньше.
         bridgeSend('VKWebAppInit', {}, 10000)
             .then(() => { vkInitialized = true; })
             .catch(() => { vkInitialized = false; });
     }
 
-    // Пытаемся инициализироваться сразу, а если библиотека ещё грузится —
-    // по её onload. Игра при этом уже работает и не ждёт VK.
     initVKBridge();
     window.__laBridgeCallbacks.push(initVKBridge);
 
     function showAd(format, onReward, onFail) {
-        const give = () => {
-            if (typeof onReward === 'function') onReward();
-        };
-        const fail = (reason) => {
-            if (typeof onFail === 'function') onFail(reason);
-        };
+        const give = () => { if (typeof onReward === 'function') onReward(); };
+        const fail = (reason) => { if (typeof onFail === 'function') onFail(reason); };
 
-        // Обычный браузер / VK Bridge не загрузился — выдаём награду локально.
         if (!vkInitialized || !isBridgeAvailable()) {
             give();
             return;
@@ -726,7 +695,7 @@
         bridgeSend('VKWebAppShowNativeAds', { ad_format: format }, 120000)
             .then((data) => {
                 if (data && data.result) give();
-                else fail('Реклама не была показана');
+                else fail('Реклама не показана');
             })
             .catch((err) => fail(err && err.message ? err.message : 'Реклама недоступна'));
     }
@@ -734,7 +703,6 @@
     function tryShowInterstitial() {
         const now = Date.now();
         if (now - lastInterstitialTime < AD_COOLDOWN) return;
-        // Реклама не должна мешать игре: любые ошибки молча игнорируются.
         showAd('interstitial',
             () => { lastInterstitialTime = Date.now(); },
             () => { lastInterstitialTime = Date.now(); });
@@ -743,7 +711,6 @@
     function watchRewardAd() {
         playTone('click');
         vibrate();
-
         let rewarded = false;
         showAd('reward', () => {
             rewarded = true;
@@ -751,14 +718,11 @@
             playTone('win');
             speakText('Ура! Начислено пятнадцать звёздочек!');
         }, (reason) => {
-            if (!rewarded) alert('Видеоролик пока недоступен' + (reason ? ': ' + reason : ''));
+            if (!rewarded) alert('Видеоролик пока недоступен');
         });
     }
 
-    // === 3. СОСТОЯНИЕ ИГРЫ ===
-    // В WebView ВКонтакте доступ к localStorage может быть запрещён
-    // (приватный режим, отключённые cookie). Раньше это ломало загрузку игры
-    // целиком — теперь прогресс просто не сохраняется между запусками.
+    // === 3. СОХРАНЕНИЕ И СОСТОЯНИЕ ===
     let storageAvailable = true;
     const memoryStorage = {};
 
@@ -795,9 +759,7 @@
                 const clean = parsed.filter((h) => typeof h === 'string');
                 return clean.indexOf('') === -1 ? ['', ...clean] : clean;
             }
-        } catch (err) {
-            // Повреждённые данные — начинаем список заново, игра не падает.
-        }
+        } catch (err) {}
         return [''];
     }
 
@@ -815,10 +777,9 @@
         unlockedHats: readUnlockedHats()
     };
 
-    // Данные могли прийти повреждёнными — приводим их к допустимым пределам.
     if (state.treeLevel < 1 || state.treeLevel > 6) state.treeLevel = 1;
     if (state.treeWaterCount < 0 || state.treeWaterCount > 2) state.treeWaterCount = 0;
-    if (state.stars < 0 || state.stars > 1000000) state.stars = 0;
+    if (state.stars < 0) state.stars = 0;
 
     const treeStages = [
         { icon: '🌱', name: 'Уровень 1: Маленький Росток' },
@@ -857,7 +818,6 @@
         document.getElementById('stars-count').innerText = state.stars;
         document.getElementById('equipped-hat').innerText = state.hat;
 
-        // Обновление состояния дерева
         const maxStage = treeStages.length;
         const currentIdx = Math.max(0, Math.min(state.treeLevel - 1, maxStage - 1));
         const stageInfo = treeStages[currentIdx];
@@ -882,7 +842,7 @@
         saveState();
     }
 
-    // === 4. МЕХАНИКА И АНИМАЦИЯ ДЕРЕВА ===
+    // === 4. ДЕРЕВО ЗНАНИЙ ===
     function applyWaterEffect() {
         playTone('water');
         vibrate(40);
@@ -890,7 +850,6 @@
         const container = document.getElementById('tree-stage-box');
         const treeIcon = document.getElementById('tree-icon');
 
-        // Создаем 5 капелек
         for (let i = 0; i < 5; i++) {
             const drop = document.createElement('div');
             drop.className = 'water-drop';
@@ -901,11 +860,9 @@
             setTimeout(() => drop.remove(), 1000);
         }
 
-        // Анимация подпрыгивания
         treeIcon.classList.add('grow-anim');
         setTimeout(() => treeIcon.classList.remove('grow-anim'), 350);
 
-        // Логика роста (3 полива = 1 уровень)
         if (state.treeLevel < treeStages.length) {
             state.treeWaterCount++;
             if (state.treeWaterCount >= 3) {
@@ -930,32 +887,86 @@
         }
     }
 
-    // === 5. ОЗВУЧКА ===
-    let activeUtterance = null;
+    // === 5. ОЗВУЧКА С ПОДДЕРЖКОЙ МОБИЛЬНОГО VK ===
+    let speechQueue = [];
+    let currentRussianVoice = null;
+
+    function loadRussianVoice() {
+        if (!('speechSynthesis' in window)) return;
+        try {
+            const voices = window.speechSynthesis.getVoices();
+            currentRussianVoice = voices.find(v => v.lang && v.lang.toLowerCase().includes('ru')) || null;
+        } catch (e) {}
+    }
+
+    if ('speechSynthesis' in window) {
+        loadRussianVoice();
+        window.speechSynthesis.onvoiceschanged = loadRussianVoice;
+        window.addEventListener('pointerdown', () => {
+            try {
+                initAudioContext();
+                if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                }
+            } catch (e) {}
+        }, { passive: true });
+    }
 
     function speakText(text, onComplete) {
-        if ('speechSynthesis' in window) {
+        if (!('speechSynthesis' in window)) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        try {
+            initAudioContext();
             window.speechSynthesis.cancel();
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+            }
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'ru-RU';
             utterance.rate = 0.95;
-            activeUtterance = utterance;
+            if (currentRussianVoice) {
+                utterance.voice = currentRussianVoice;
+            }
+
+            speechQueue.push(utterance);
 
             let finished = false;
             const done = () => {
                 if (!finished) {
                     finished = true;
-                    activeUtterance = null;
+                    const idx = speechQueue.indexOf(utterance);
+                    if (idx > -1) speechQueue.splice(idx, 1);
                     if (onComplete) onComplete();
                 }
             };
 
             utterance.onend = done;
             utterance.onerror = done;
+
             window.speechSynthesis.speak(utterance);
-            setTimeout(done, 4000);
-        } else if (onComplete) {
-            onComplete();
+            setTimeout(done, 5000);
+        } catch (e) {
+            if (onComplete) onComplete();
+        }
+    }
+
+    function repeatWordHint() {
+        playTone('click');
+        vibrate(20);
+        if (currentWordObj && currentWordObj.hint) {
+            speakText(currentWordObj.hint);
+        }
+    }
+
+    function repeatMathTask() {
+        playTone('click');
+        vibrate(20);
+        if (currentMathSpeech) {
+            speakText(currentMathSpeech);
         }
     }
 
@@ -978,12 +989,13 @@
         playTone('win');
         vibrate(100);
         addStars(10);
-        
-        // Автоматический полив дерева в награду за урок!
         applyWaterEffect();
 
         const modal = document.getElementById('victory-modal');
-        if (modal) modal.classList.add('open');
+        if (modal) {
+            modal.classList.add('open');
+            modal.style.display = 'flex';
+        }
         speakText('Ура! Урок завершён! Ты настоящий чемпион!');
         tryShowInterstitial();
     }
@@ -1003,7 +1015,10 @@
 
     function closeVictoryModal() {
         const modal = document.getElementById('victory-modal');
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            modal.classList.remove('open');
+            modal.style.display = 'none';
+        }
         if (currentScreenId === 'words-screen') {
             wordLessonStep = 0;
             initWordGame();
@@ -1199,6 +1214,7 @@
 
     // === 9. МАТЕМАТИКА БЕЗ ПОВТОРОВ ===
     let currentMathAnswer = 0;
+    let currentMathSpeech = '';
     let mathHistory = [];
 
     function generateMathTask() {
@@ -1235,6 +1251,7 @@
         renderDots('math-progress', mathLessonStep);
         const task = generateMathTask();
         currentMathAnswer = task.ans;
+        currentMathSpeech = task.speech;
 
         document.getElementById('math-task').innerText = task.text;
         speakText(task.speech);
@@ -1329,11 +1346,7 @@
         canvas = document.getElementById('birdCanvas');
         if (!canvas) return;
         ctx = canvas.getContext('2d');
-        // В некоторых WebView canvas может быть недоступен — не роняем всё приложение.
-        if (!ctx) {
-            console.warn('Canvas 2D недоступен — экран «Стрельба» отключён');
-            return;
-        }
+        if (!ctx) return;
 
         resetAngryBirdLevel();
 
@@ -1350,7 +1363,6 @@
             const p = getPos(e);
             if (Math.hypot(p.x - bird.x, p.y - bird.y) < 40) {
                 isDragging = true;
-                // setPointerCapture может отсутствовать или бросать ошибку в WebView ВК.
                 try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
                 playTone('click');
                 vibrate(20);
@@ -1485,65 +1497,21 @@
         animFrameId = requestAnimationFrame(updateAngryBird);
     }
 
-    // === 12. ЗАПУСК И ОБРАБОТКА ОШИБОК ===
-    // Любая ошибка запуска раньше приводила к пустому экрану без объяснений.
-    // Теперь игра всё равно показывается, а причина выводится на экран.
-    const bootedAt = Date.now();
-    window.__laErrors = [];
-
-    function showFatalError(message) {
-        try {
-            const box = document.getElementById('fatal-error');
-            const text = document.getElementById('fatal-error-text');
-            if (text) {
-                text.innerText = 'Техническая информация: ' + message;
-            }
-            if (box) box.classList.add('open');
-            // Приложение показываем всегда — лучше частично рабочая игра,
-            // чем пустой экран.
-            document.body.classList.add('la-ready');
-        } catch (err) {
-            // Последний рубеж: даже DOM может быть недоступен.
-            document.body.innerHTML =
-                '<div style="padding:24px;font-family:sans-serif;">' +
-                '<h3>Лесная Академия</h3><p>Не удалось загрузить игру.</p>' +
-                '<p style="font-size:12px;color:#888;">' + String(message) + '</p></div>';
-        }
-    }
-
-    window.onerror = function (message, source, line, col) {
+    // === 12. СТАРТ И ОБРАБОТКА ОШИБОК ===
+    window.onerror = function (message, source, line) {
         const text = `${message} (${source || 'inline'}:${line || 0})`;
-        window.__laErrors.push(text);
-        showFatalError(text);
+        const box = document.getElementById('fatal-error');
+        const textEl = document.getElementById('fatal-error-text');
+        if (textEl) textEl.innerText = text;
+        if (box) box.classList.add('open');
+        document.body.classList.add('la-ready');
     };
-
-    window.addEventListener('unhandledrejection', (event) => {
-        const reason = event && event.reason;
-        const text = 'Необработанный промис: ' + ((reason && reason.message) || reason);
-        window.__laErrors.push(text);
-        showFatalError(text);
-    });
 
     function boot() {
         try {
             updateUI();
-        } catch (err) {
-            showFatalError('Сбой первичной отрисовки: ' + ((err && err.message) || err));
-        }
-
-        // Игра готова — убираем экран «Загрузка игры…».
+        } catch (e) {}
         document.body.classList.add('la-ready');
-
-        // Страховка: если ничего не отрисовалось за 8 секунд,
-        // показываем сообщение вместо пустого экрана.
-        setTimeout(() => {
-            const app = document.getElementById('app');
-            const stars = document.getElementById('stars-count');
-            const visible = app && app.offsetHeight > 0 && stars && stars.innerText !== '';
-            if (!visible) {
-                showFatalError('Игра не отрисовалась за 8 секунд. Возможна ошибка в данных прогресса.');
-            }
-        }, 8000);
     }
 
     if (document.readyState === 'loading') {
@@ -1553,7 +1521,6 @@
     }
 
     window.addEventListener('pagehide', function () {
-        // Гарантированно сохраняем прогресс при сворачивании/закрытии приложения ВК.
         try {
             storageSet('la_stars', state.stars);
             storageSet('la_tree', state.treeLevel);
@@ -1562,22 +1529,7 @@
             storageSet('la_unlocked_hats', JSON.stringify(state.unlockedHats));
         } catch (err) {}
     });
-
-    window.__laBootedIn = function () { return Date.now() - bootedAt; };
-    window.__laDiagnostics = function () {
-        return {
-            readyState: document.readyState,
-            bootMs: Date.now() - bootedAt,
-            bridgeLoaded: isBridgeAvailable(),
-            bridgeInitialized: vkInitialized,
-            bridgeFailed: window.__laBridgeFailed,
-            storageAvailable: storageAvailable,
-            stars: state.stars,
-            treeLevel: state.treeLevel,
-            errors: window.__laErrors.slice()
-        };
-    };
-    </script>
+</script>
 
 </body>
 </html>
