@@ -4,55 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Лесная Академия</title>
-    <!--
-      VK Bridge SDK с отказоустойчивой динамической загрузкой.
-      Если сеть/CDN временно недоступны в мобильном клиенте, игра не зависает,
-      а сразу запускается и работает локально.
-    -->
+    <!-- VK Bridge SDK с резервным зеркалом -->
     <script>
-        window.__laBridgeReady = false;
-        window.__laBridgeFailed = false;
-        window.__laBridgeCallbacks = [];
-
-        window.__laOnBridgeReady = function () {
-            window.__laBridgeReady = true;
-            window.__laBridgeFailed = false;
-            console.info('[Лесная Академия] VK Bridge успешно подключён');
-            const list = window.__laBridgeCallbacks.splice(0);
-            list.forEach(function (fn) { try { fn(); } catch (e) {} });
-        };
-
-        window.__laOnBridgeFailed = function () {
-            window.__laBridgeFailed = true;
-            console.warn('[Лесная Академия] VK Bridge недоступен, игра работает автономно');
-        };
-
         window.LA_BRIDGE_SOURCES = [
             'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js',
             'https://cdn.jsdelivr.net/npm/@vkontakte/vk-bridge/dist/browser.min.js'
         ];
-
         (function loadVKBridge() {
-            let index = 0;
+            let idx = 0;
             function tryNext() {
-                if (index >= window.LA_BRIDGE_SOURCES.length) {
-                    window.__laOnBridgeFailed();
-                    return;
-                }
-                const url = window.LA_BRIDGE_SOURCES[index++];
-                const tag = document.createElement('script');
-                tag.src = url;
-                tag.onload = function () {
-                    if (typeof window.vkBridge !== 'undefined') {
-                        window.__laOnBridgeReady();
-                    } else {
-                        tryNext();
-                    }
-                };
-                tag.onerror = function () {
-                    tryNext();
-                };
-                document.head.appendChild(tag);
+                if (idx >= window.LA_BRIDGE_SOURCES.length) return;
+                const s = document.createElement('script');
+                s.src = window.LA_BRIDGE_SOURCES[idx++];
+                s.onload = () => { if (window.vkBridge) window.vkBridge.send('VKWebAppInit'); };
+                s.onerror = tryNext;
+                document.head.appendChild(s);
             }
             tryNext();
         })();
@@ -121,7 +87,6 @@
             padding-bottom: 6px;
             margin-bottom: 10px;
         }
-
         nav::-webkit-scrollbar { display: none; }
 
         .nav-btn {
@@ -147,7 +112,7 @@
         .screen {
             display: none;
             background: var(--card-bg);
-            padding: 20px 14px;
+            padding: 18px 14px;
             border-radius: 24px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.06);
             text-align: center;
@@ -164,7 +129,7 @@
         .progress-dots {
             display: flex;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .dot {
@@ -175,9 +140,7 @@
             transition: background 0.3s;
         }
 
-        .dot.completed {
-            background: var(--primary-color);
-        }
+        .dot.completed { background: var(--primary-color); }
 
         .btn {
             background-color: var(--primary-color);
@@ -194,47 +157,22 @@
         }
 
         .btn:active:not(:disabled) { transform: scale(0.96); }
+        .btn-reward { background-color: var(--accent-color); box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3); }
+        .btn-water { background-color: var(--water-color); box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3); }
 
-        .btn-reward {
-            background-color: var(--accent-color);
-            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
-        }
-
-        .btn-water {
-            background-color: var(--water-color);
-            box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3);
-        }
-
-        .btn:disabled, .choice-btn:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .pet-container {
-            font-size: 5.5rem;
-            margin: 12px 0;
-            position: relative;
-            animation: bounce 2s infinite ease-in-out;
-        }
-
-        .pet-hat {
-            position: absolute;
-            top: -24px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 2.8rem;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+        /* Иллюстрация слова */
+        .word-image-card {
+            font-size: 4.6rem;
+            line-height: 1;
+            margin: 4px 0 6px 0;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+            animation: pop 0.3s ease-out;
         }
 
         .word-letters {
             display: flex;
             gap: 8px;
-            margin: 16px 0;
+            margin: 14px 0;
             font-size: 2rem;
             font-weight: bold;
             justify-content: center;
@@ -284,23 +222,22 @@
             background: #cbd5e1;
         }
 
-        .speaker-btn {
-            background: #e0f2fe;
-            border: 2px solid #bae6fd;
-            border-radius: 14px;
-            padding: 8px 14px;
-            font-size: 1.3rem;
-            cursor: pointer;
-            min-width: auto;
-            transition: transform 0.1s, background-color 0.2s;
+        /* Визуализация математики */
+        .math-visual-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 1.6rem;
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 10px 16px;
+            margin-bottom: 12px;
+            letter-spacing: 2px;
         }
 
-        .speaker-btn:active {
-            transform: scale(0.92);
-            background: #bae6fd;
-        }
-
-        /* Стили дерева и полива */
+        /* Дерево знаний */
         .tree-stage-wrapper {
             position: relative;
             margin: 10px 0;
@@ -317,9 +254,7 @@
             display: inline-block;
         }
 
-        .tree-display.grow-anim {
-            transform: scale(1.22);
-        }
+        .tree-display.grow-anim { transform: scale(1.22); }
 
         .water-drop {
             position: absolute;
@@ -377,11 +312,7 @@
         }
 
         .item-card:active { transform: scale(0.96); }
-
-        .item-card.equipped {
-            border-color: var(--primary-color);
-            background: #f0fdf4;
-        }
+        .item-card.equipped { border-color: var(--primary-color); background: #f0fdf4; }
 
         canvas {
             width: 100%;
@@ -406,8 +337,6 @@
             padding: 20px;
         }
 
-        .modal-overlay.open { display: flex !important; }
-
         .modal-card {
             background: #fff;
             padding: 26px 18px;
@@ -424,57 +353,28 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Экран загрузки и ошибок */
-        body:not(.la-ready) #app { visibility: hidden; }
-
-        #boot-status {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            text-align: center;
-            padding: 24px;
-            background: var(--bg-color);
-            color: var(--text-color);
-            z-index: 9999;
-            font-size: 1.05rem;
+        .pet-container {
+            font-size: 5.5rem;
+            margin: 12px 0;
+            position: relative;
+            animation: bounce 2s infinite ease-in-out;
         }
 
-        body.la-ready #boot-status { display: none; }
-
-        #fatal-error {
-            display: none;
-            position: fixed;
-            left: 0; right: 0; bottom: 0;
-            z-index: 10000;
-            background: #fff3e0;
-            border-top: 3px solid var(--accent-color);
-            padding: 12px 14px;
-            text-align: left;
-            font-size: 0.95rem;
-            color: #7c2d12;
-            box-shadow: 0 -6px 20px rgba(0,0,0,0.15);
+        .pet-hat {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.8rem;
         }
 
-        #fatal-error.open { display: block; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
     </style>
 </head>
 <body>
-
-<div id="boot-status">
-    <div style="font-size: 2.6rem;">🌳</div>
-    <div><b>Лесная Академия</b></div>
-    <div style="color:#64748b; font-size:0.95rem;">Загрузка игры…</div>
-</div>
-
-<div id="fatal-error">
-    <b>⚠️ Ошибка загрузки</b>
-    <div id="fatal-error-text" style="font-size:0.85rem; margin: 4px 0;"></div>
-    <button class="btn" style="padding:6px 16px; font-size:0.85rem;" onclick="location.reload()">Перезагрузить</button>
-</div>
 
 <div id="app">
     <header>
@@ -500,18 +400,15 @@
             <span id="pet-emoji">🦊</span>
         </div>
         <h3 id="pet-name" style="margin: 4px 0;">Лисёнок Рыжик</h3>
-        <p id="status-text" style="color: #64748b; font-size: 0.95rem;">Проходи уроки, чтобы растить Дерево и открывать шапки!</p>
+        <p id="status-text" style="color: #64748b; font-size: 0.95rem;">Проходи уроки, расти Дерево и собирай подарки!</p>
         <button class="btn btn-reward" onclick="watchRewardAd()">🎬 Посмотреть мультик (+15 ⭐)</button>
     </main>
 
     <!-- 2. Экран: Слова -->
     <main class="screen" id="words-screen">
         <div class="progress-dots" id="words-progress"></div>
-        <h3>Собери слово по буквам</h3>
-        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0; min-height: 38px;">
-            <p id="word-hint" style="font-weight: 500; color: #475569; margin: 0;">Загрузка...</p>
-            <button class="speaker-btn" onclick="repeatWordHint()" title="Повторить подсказку вслух">🔊</button>
-        </div>
+        <div class="word-image-card" id="word-image">🐱</div>
+        <p id="word-hint" style="font-weight: 600; color: #475569; margin: 0 0 8px 0; min-height: 22px;">Кто говорит МЯУ?</p>
         <div class="word-letters" id="word-boxes"></div>
         <div class="choices" id="letter-choices"></div>
         <small style="color: #94a3b8; margin-top: 12px;">Нажми на букву в слове, чтобы вернуть её назад</small>
@@ -520,11 +417,8 @@
     <!-- 3. Экран: Счёт -->
     <main class="screen" id="math-screen">
         <div class="progress-dots" id="math-progress"></div>
-        <h3>Посчитай пример</h3>
-        <div style="display: flex; align-items: center; justify-content: center; gap: 14px; margin: 12px 0;">
-            <h1 id="math-task" style="font-size: 2.8rem; margin: 0; color: #1e293b;">2 + 3 = ?</h1>
-            <button class="speaker-btn" onclick="repeatMathTask()" title="Повторить пример вслух">🔊</button>
-        </div>
+        <h1 id="math-task" style="font-size: 2.8rem; margin: 4px 0; color: #1e293b;">2 + 3 = ?</h1>
+        <div class="math-visual-box" id="math-visual">🍎🍎 + 🍎🍎🍎</div>
         <div class="choices" id="math-choices"></div>
     </main>
 
@@ -583,7 +477,6 @@
 <script>
     // === 1. ЗВУКОВОЙ СИНТЕЗАТОР (Web Audio API) ===
     let audioCtx = null;
-
     function initAudioContext() {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -639,147 +532,45 @@
         if (navigator.vibrate) navigator.vibrate(ms);
     }
 
+    window.addEventListener('pointerdown', initAudioContext, { once: true, passive: true });
+
     // === 2. VK BRIDGE И МОНЕТИЗАЦИЯ ===
-    let vkInitialized = false;
     let lastInterstitialTime = 0;
     const AD_COOLDOWN = 210000;
 
-    function isBridgeAvailable() {
-        return typeof window.vkBridge !== 'undefined' && window.vkBridge !== null;
-    }
-
-    function bridgeSend(method, params, timeoutMs) {
-        return new Promise((resolve, reject) => {
-            if (!isBridgeAvailable()) {
-                reject(new Error('VK Bridge недоступен'));
-                return;
-            }
-            let settled = false;
-            const timer = setTimeout(() => {
-                if (!settled) {
-                    settled = true;
-                    reject(new Error('Timeout ' + (timeoutMs || 15000) + ' ms'));
-                }
-            }, timeoutMs || 15000);
-
-            try {
-                window.vkBridge.send(method, params || {}).then(
-                    (data) => { if (!settled) { settled = true; clearTimeout(timer); resolve(data); } },
-                    (err) => { if (!settled) { settled = true; clearTimeout(timer); reject(err); } }
-                );
-            } catch (err) {
-                if (!settled) { settled = true; clearTimeout(timer); reject(err); }
-            }
-        });
-    }
-
-    function initVKBridge() {
-        if (!isBridgeAvailable()) return;
-        bridgeSend('VKWebAppInit', {}, 10000)
-            .then(() => { vkInitialized = true; })
-            .catch(() => { vkInitialized = false; });
-    }
-
-    initVKBridge();
-    window.__laBridgeCallbacks.push(initVKBridge);
-
-    function showAd(format, onReward, onFail) {
-        const give = () => { if (typeof onReward === 'function') onReward(); };
-        const fail = (reason) => { if (typeof onFail === 'function') onFail(reason); };
-
-        if (!vkInitialized || !isBridgeAvailable()) {
-            give();
-            return;
+    function showAd(format, onReward) {
+        if (window.vkBridge) {
+            window.vkBridge.send('VKWebAppShowNativeAds', { ad_format: format })
+                .then((data) => { if (data && data.result && onReward) onReward(); })
+                .catch(() => { if (onReward) onReward(); });
+        } else if (onReward) {
+            onReward();
         }
-
-        bridgeSend('VKWebAppShowNativeAds', { ad_format: format }, 120000)
-            .then((data) => {
-                if (data && data.result) give();
-                else fail('Реклама не показана');
-            })
-            .catch((err) => fail(err && err.message ? err.message : 'Реклама недоступна'));
     }
 
     function tryShowInterstitial() {
         const now = Date.now();
         if (now - lastInterstitialTime < AD_COOLDOWN) return;
-        showAd('interstitial',
-            () => { lastInterstitialTime = Date.now(); },
-            () => { lastInterstitialTime = Date.now(); });
+        showAd('interstitial', () => { lastInterstitialTime = Date.now(); });
     }
 
     function watchRewardAd() {
         playTone('click');
         vibrate();
-        let rewarded = false;
         showAd('reward', () => {
-            rewarded = true;
             addStars(15);
             playTone('win');
-            speakText('Ура! Начислено пятнадцать звёздочек!');
-        }, (reason) => {
-            if (!rewarded) alert('Видеоролик пока недоступен');
         });
     }
 
-    // === 3. СОХРАНЕНИЕ И СОСТОЯНИЕ ===
-    let storageAvailable = true;
-    const memoryStorage = {};
-
-    function storageGet(key) {
-        try {
-            return window.localStorage.getItem(key);
-        } catch (err) {
-            storageAvailable = false;
-            return Object.prototype.hasOwnProperty.call(memoryStorage, key) ? memoryStorage[key] : null;
-        }
-    }
-
-    function storageSet(key, value) {
-        memoryStorage[key] = String(value);
-        if (!storageAvailable) return;
-        try {
-            window.localStorage.setItem(key, String(value));
-        } catch (err) {
-            storageAvailable = false;
-        }
-    }
-
-    function readInt(key, fallback) {
-        const parsed = parseInt(storageGet(key), 10);
-        return Number.isFinite(parsed) ? parsed : fallback;
-    }
-
-    function readUnlockedHats() {
-        const raw = storageGet('la_unlocked_hats');
-        if (!raw) return [''];
-        try {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-                const clean = parsed.filter((h) => typeof h === 'string');
-                return clean.indexOf('') === -1 ? ['', ...clean] : clean;
-            }
-        } catch (err) {}
-        return [''];
-    }
-
-    function readHeldHat() {
-        const hatsOwned = readUnlockedHats();
-        const saved = storageGet('la_hat');
-        return hatsOwned.indexOf(saved || '') === -1 ? '' : (saved || '');
-    }
-
+    // === 3. СОХРАНЕНИЕ СОСТОЯНИЯ ===
     let state = {
-        stars: readInt('la_stars', 10),
-        treeLevel: readInt('la_tree', 1),
-        treeWaterCount: readInt('la_tree_water', 0),
-        hat: readHeldHat(),
-        unlockedHats: readUnlockedHats()
+        stars: parseInt(localStorage.getItem('la_stars')) || 10,
+        treeLevel: parseInt(localStorage.getItem('la_tree')) || 1,
+        treeWaterCount: parseInt(localStorage.getItem('la_tree_water')) || 0,
+        hat: localStorage.getItem('la_hat') || '',
+        unlockedHats: JSON.parse(localStorage.getItem('la_unlocked_hats') || '[""]')
     };
-
-    if (state.treeLevel < 1 || state.treeLevel > 6) state.treeLevel = 1;
-    if (state.treeWaterCount < 0 || state.treeWaterCount > 2) state.treeWaterCount = 0;
-    if (state.stars < 0) state.stars = 0;
 
     const treeStages = [
         { icon: '🌱', name: 'Уровень 1: Маленький Росток' },
@@ -806,11 +597,11 @@
     ];
 
     function saveState() {
-        storageSet('la_stars', state.stars);
-        storageSet('la_tree', state.treeLevel);
-        storageSet('la_tree_water', state.treeWaterCount);
-        storageSet('la_hat', state.hat);
-        storageSet('la_unlocked_hats', JSON.stringify(state.unlockedHats));
+        localStorage.setItem('la_stars', state.stars);
+        localStorage.setItem('la_tree', state.treeLevel);
+        localStorage.setItem('la_tree_water', state.treeWaterCount);
+        localStorage.setItem('la_hat', state.hat);
+        localStorage.setItem('la_unlocked_hats', JSON.stringify(state.unlockedHats));
         updateUI();
     }
 
@@ -829,7 +620,7 @@
             document.getElementById('tree-bar-fill').style.width = '100%';
             document.getElementById('tree-progress-text').innerText = 'Максимальный уровень достигнут! 🌟';
         } else {
-            const pct = Math.min(100, Math.max(0, (state.treeWaterCount / 3) * 100));
+            const pct = (state.treeWaterCount / 3) * 100;
             document.getElementById('tree-bar-fill').style.width = `${pct}%`;
             document.getElementById('tree-progress-text').innerText = `Полито: ${state.treeWaterCount} / 3 капель`;
         }
@@ -869,9 +660,6 @@
                 state.treeWaterCount = 0;
                 state.treeLevel++;
                 playTone('win');
-                speakText('Ура! Дерево выросло!');
-            } else {
-                speakText('Дерево довольно!');
             }
         }
         saveState();
@@ -882,95 +670,11 @@
             state.stars -= 10;
             applyWaterEffect();
         } else {
-            speakText('Нужно больше звёздочек!');
             alert('Нужно 10 ⭐. Проходи уроки или смотри мультики!');
         }
     }
 
-    // === 5. ОЗВУЧКА С ПОДДЕРЖКОЙ МОБИЛЬНОГО VK ===
-    let speechQueue = [];
-    let currentRussianVoice = null;
-
-    function loadRussianVoice() {
-        if (!('speechSynthesis' in window)) return;
-        try {
-            const voices = window.speechSynthesis.getVoices();
-            currentRussianVoice = voices.find(v => v.lang && v.lang.toLowerCase().includes('ru')) || null;
-        } catch (e) {}
-    }
-
-    if ('speechSynthesis' in window) {
-        loadRussianVoice();
-        window.speechSynthesis.onvoiceschanged = loadRussianVoice;
-        window.addEventListener('pointerdown', () => {
-            try {
-                initAudioContext();
-                if (window.speechSynthesis.paused) {
-                    window.speechSynthesis.resume();
-                }
-            } catch (e) {}
-        }, { passive: true });
-    }
-
-    function speakText(text, onComplete) {
-        if (!('speechSynthesis' in window)) {
-            if (onComplete) onComplete();
-            return;
-        }
-
-        try {
-            initAudioContext();
-            window.speechSynthesis.cancel();
-            if (window.speechSynthesis.paused) {
-                window.speechSynthesis.resume();
-            }
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ru-RU';
-            utterance.rate = 0.95;
-            if (currentRussianVoice) {
-                utterance.voice = currentRussianVoice;
-            }
-
-            speechQueue.push(utterance);
-
-            let finished = false;
-            const done = () => {
-                if (!finished) {
-                    finished = true;
-                    const idx = speechQueue.indexOf(utterance);
-                    if (idx > -1) speechQueue.splice(idx, 1);
-                    if (onComplete) onComplete();
-                }
-            };
-
-            utterance.onend = done;
-            utterance.onerror = done;
-
-            window.speechSynthesis.speak(utterance);
-            setTimeout(done, 5000);
-        } catch (e) {
-            if (onComplete) onComplete();
-        }
-    }
-
-    function repeatWordHint() {
-        playTone('click');
-        vibrate(20);
-        if (currentWordObj && currentWordObj.hint) {
-            speakText(currentWordObj.hint);
-        }
-    }
-
-    function repeatMathTask() {
-        playTone('click');
-        vibrate(20);
-        if (currentMathSpeech) {
-            speakText(currentMathSpeech);
-        }
-    }
-
-    // === 6. СИСТЕМА УРОКОВ (5 заданий) ===
+    // === 5. СИСТЕМА УРОКОВ ===
     let wordLessonStep = 0;
     let mathLessonStep = 0;
     const LESSON_LENGTH = 5;
@@ -990,35 +694,20 @@
         vibrate(100);
         addStars(10);
         applyWaterEffect();
-
-        const modal = document.getElementById('victory-modal');
-        if (modal) {
-            modal.classList.add('open');
-            modal.style.display = 'flex';
-        }
-        speakText('Ура! Урок завершён! Ты настоящий чемпион!');
+        document.getElementById('victory-modal').style.display = 'flex';
         tryShowInterstitial();
     }
 
     function doubleLessonReward() {
-        let rewarded = false;
         showAd('reward', () => {
-            rewarded = true;
             addStars(20);
             playTone('win');
-            speakText('Бонус удвоен! Плюс двадцать звёздочек!');
             closeVictoryModal();
-        }, () => {
-            if (!rewarded) alert('Видео пока недоступно');
         });
     }
 
     function closeVictoryModal() {
-        const modal = document.getElementById('victory-modal');
-        if (modal) {
-            modal.classList.remove('open');
-            modal.style.display = 'none';
-        }
+        document.getElementById('victory-modal').style.display = 'none';
         if (currentScreenId === 'words-screen') {
             wordLessonStep = 0;
             initWordGame();
@@ -1028,7 +717,7 @@
         }
     }
 
-    // === 7. НАВИГАЦИЯ ===
+    // === 6. НАВИГАЦИЯ ===
     let currentScreenId = 'pet-screen';
 
     function switchScreen(screenId, btn) {
@@ -1053,48 +742,48 @@
         if (screenId === 'game-screen') initAngryBirdGame();
     }
 
-    // === 8. СЛОВАРЬ (40 СЛОВ БЕЗ ПОВТОРОВ) ===
+    // === 7. СЛОВАРЬ (40 СЛОВ С КАРТИНКАМИ) ===
     const wordsData = [
-        { word: 'КОТ', hint: 'Кто говорит МЯУ?' },
-        { word: 'ПЁС', hint: 'Кто громко лает ГАВ?' },
-        { word: 'ЛИСА', hint: 'Рыжая плутовка с пушистым хвостом' },
-        { word: 'ВОЛК', hint: 'Серый лесной хищник, воет на луну' },
-        { word: 'СОВА', hint: 'Ночная птица с большими круглыми глазами' },
-        { word: 'ЁЖИК', hint: 'Маленький лесной зверёк с иголками' },
-        { word: 'ЗАЯЦ', hint: 'Быстрый зверёк с длинными ушками' },
-        { word: 'МЫШКА', hint: 'Маленькая серая, любит сыр' },
-        { word: 'УТКА', hint: 'Плавает в пруду и говорит КРЯ' },
-        { word: 'РЫБА', hint: 'Живёт в воде и быстро плавает' },
-        { word: 'ЖАБА', hint: 'Зелёная прыгунья на болоте' },
-        { word: 'БЕЛКА', hint: 'Прыгает по веткам и грызёт орешки' },
-        { word: 'ЛЕС', hint: 'Где растут деревья и живут зверята?' },
-        { word: 'ДОМ', hint: 'Где живёт дружная семья?' },
-        { word: 'СОК', hint: 'Сладкий напиток из свежих яблок' },
-        { word: 'ДУБ', hint: 'Могучее дерево с желудями' },
-        { word: 'МЁД', hint: 'Сладкое лакомство лесных пчёл' },
-        { word: 'СЫР', hint: 'Жёлтый, вкусный и с дырочками' },
-        { word: 'МЯЧ', hint: 'Круглый, весело прыгает по траве' },
-        { word: 'ЧАЙ', hint: 'Горячий напиток в любимой кружке' },
-        { word: 'СУП', hint: 'Полезный горячий обед в тарелке' },
-        { word: 'САД', hint: 'Где растут яблони и вишни?' },
-        { word: 'ГРИБ', hint: 'Прячется под ёлкой в круглой шляпке' },
-        { word: 'РОЗА', hint: 'Красивый цветок с колючими шипами' },
-        { word: 'ЛУНА', hint: 'Светит на ночном небе среди звёзд' },
-        { word: 'НЕБО', hint: 'Голубое, по нему плывут облака' },
-        { word: 'СНЕГ', hint: 'Белый и холодный, падает зимой' },
-        { word: 'ДОЖДЬ', hint: 'Капает с тучки тёплыми каплями' },
-        { word: 'ВЕТЕР', hint: 'Невидимка, качает ветки деревьев' },
-        { word: 'РЕКА', hint: 'Течёт и журчит среди зелёных лугов' },
-        { word: 'ГОРА', hint: 'Очень высокая скалистая вершина' },
-        { word: 'МОСТ', hint: 'Помогает перейти через речку' },
-        { word: 'ЧАСЫ', hint: 'Тикают и показывают время' },
-        { word: 'КНИГА', hint: 'В ней живут сказки и цветные картинки' },
-        { word: 'КУКЛА', hint: 'Игрушка в красивом нарядном платье' },
-        { word: 'ПОЕЗД', hint: 'Мчится по рельсам: чух-чух, ту-ту!' },
-        { word: 'ЛОДКА', hint: 'Плывёт по озеру, если грести вёслами' },
-        { word: 'САНИ', hint: 'Мчатся зимой с ледяной горки' },
-        { word: 'ШАР', hint: 'Летит высоко в небо на ниточке' },
-        { word: 'ТОРТ', hint: 'Сладкое угощение со свечками' }
+        { word: 'КОТ', img: '🐱', hint: 'Кто говорит МЯУ?' },
+        { word: 'ПЁС', img: '🐶', hint: 'Кто громко лает ГАВ?' },
+        { word: 'ЛИСА', img: '🦊', hint: 'Рыжая плутовка с пушистым хвостом' },
+        { word: 'ВОЛК', img: '🐺', hint: 'Серый лесной хищник, воет на луну' },
+        { word: 'СОВА', img: '🦉', hint: 'Ночная птица с большими круглыми глазами' },
+        { word: 'ЁЖИК', img: '🦔', hint: 'Маленький лесной зверёк с иголками' },
+        { word: 'ЗАЯЦ', img: '🐰', hint: 'Быстрый зверёк с длинными ушками' },
+        { word: 'МЫШКА', img: '🐭', hint: 'Маленькая серая, любит сыр' },
+        { word: 'УТКА', img: '🦆', hint: 'Плавает в пруду и говорит КРЯ' },
+        { word: 'РЫБА', img: '🐟', hint: 'Живёт в воде и быстро плавает' },
+        { word: 'ЖАБА', img: '🐸', hint: 'Зелёная прыгунья на болоте' },
+        { word: 'БЕЛКА', img: '🐿️', hint: 'Прыгает по веткам и грызёт орешки' },
+        { word: 'ЛЕС', img: '🌲', hint: 'Где растут деревья и живут зверята?' },
+        { word: 'ДОМ', img: '🏠', hint: 'Где живёт дружная семья?' },
+        { word: 'СОК', img: '🧃', hint: 'Сладкий напиток из свежих яблок' },
+        { word: 'ДУБ', img: '🌳', hint: 'Могучее дерево с желудями' },
+        { word: 'МЁД', img: '🍯', hint: 'Сладкое лакомство лесных пчёл' },
+        { word: 'СЫР', img: '🧀', hint: 'Жёлтый, вкусный и с дырочками' },
+        { word: 'МЯЧ', img: '⚽', hint: 'Круглый, весело прыгает по траве' },
+        { word: 'ЧАЙ', img: '🍵', hint: 'Горячий напиток в любимой кружке' },
+        { word: 'СУП', img: '🍲', hint: 'Полезный горячий обед в тарелке' },
+        { word: 'САД', img: '🍎', hint: 'Где растут яблони и вишни?' },
+        { word: 'ГРИБ', img: '🍄', hint: 'Прячется под ёлкой в круглой шляпке' },
+        { word: 'РОЗА', img: '🌹', hint: 'Красивый цветок с колючими шипами' },
+        { word: 'ЛУНА', img: '🌙', hint: 'Светит на ночном небе среди звёзд' },
+        { word: 'НЕБО', img: '☁️', hint: 'Голубое, по нему плывут облака' },
+        { word: 'СНЕГ', img: '❄️', hint: 'Белый и холодный, падает зимой' },
+        { word: 'ДОЖДЬ', img: '🌧️', hint: 'Капает с тучки тёплыми каплями' },
+        { word: 'ВЕТЕР', img: '💨', hint: 'Невидимка, качает ветки деревьев' },
+        { word: 'РЕКА', img: '🌊', hint: 'Течёт и журчит среди зелёных лугов' },
+        { word: 'ГОРА', img: '⛰️', hint: 'Очень высокая скалистая вершина' },
+        { word: 'МОСТ', img: '🌉', hint: 'Помогает перейти через речку' },
+        { word: 'ЧАСЫ', img: '⏰', hint: 'Тикают и показывают время' },
+        { word: 'КНИГА', img: '📖', hint: 'В ней живут сказки и цветные картинки' },
+        { word: 'КУКЛА', img: '🪆', hint: 'Игрушка в красивом нарядном платье' },
+        { word: 'ПОЕЗД', img: '🚂', hint: 'Мчится по рельсам: чух-чух, ту-ту!' },
+        { word: 'ЛОДКА', img: '⛵', hint: 'Плывёт по озеру, если грести вёслами' },
+        { word: 'САНИ', img: '🛷', hint: 'Мчатся зимой с ледяной горки' },
+        { word: 'ШАР', img: '🎈', hint: 'Летит высоко в небо на ниточке' },
+        { word: 'ТОРТ', img: '🎂', hint: 'Сладкое угощение со свечками' }
     ];
 
     let wordsDeck = [];
@@ -1114,10 +803,10 @@
         renderDots('words-progress', wordLessonStep);
         isWordLocked = false;
         currentWordObj = getNextWord();
-        document.getElementById('word-hint').innerText = `Подсказка: «${currentWordObj.hint}»`;
         placedLetters = [];
 
-        speakText(currentWordObj.hint);
+        document.getElementById('word-image').innerText = currentWordObj.img;
+        document.getElementById('word-hint').innerText = currentWordObj.hint;
 
         const boxes = document.getElementById('word-boxes');
         boxes.innerHTML = '';
@@ -1143,7 +832,6 @@
 
         playTone('click');
         vibrate(25);
-        speakText(char);
 
         const slotIndex = placedLetters.length;
         placedLetters.push({ char, buttonEl });
@@ -1191,15 +879,13 @@
             renderDots('words-progress', wordLessonStep);
 
             if (wordLessonStep >= LESSON_LENGTH) {
-                setTimeout(onLessonComplete, 1000);
+                setTimeout(onLessonComplete, 800);
             } else {
-                speakText('Молодец! Правильно!', () => {
-                    setTimeout(initWordGame, 800);
-                });
+                setTimeout(initWordGame, 800);
             }
         } else {
             vibrate(150);
-            speakText('Попробуй ещё раз!', () => {
+            setTimeout(() => {
                 isWordLocked = false;
                 placedLetters.forEach(p => p.buttonEl.disabled = false);
                 placedLetters = [];
@@ -1208,53 +894,51 @@
                     box.innerText = '';
                     box.classList.remove('filled');
                 }
-            });
+            }, 600);
         }
     }
 
-    // === 9. МАТЕМАТИКА БЕЗ ПОВТОРОВ ===
+    // === 8. НАГЛЯДНАЯ МАТЕМАТИКА ===
     let currentMathAnswer = 0;
-    let currentMathSpeech = '';
     let mathHistory = [];
 
     function generateMathTask() {
         let task = null;
         for (let attempts = 0; attempts < 30; attempts++) {
             const isAddition = Math.random() > 0.4;
-            let text = '', ans = 0, speech = '';
+            let text = '', ans = 0, visual = '';
 
             if (isAddition) {
-                const a = Math.floor(Math.random() * 5) + 1;
-                const b = Math.floor(Math.random() * 5) + 1;
+                const a = Math.floor(Math.random() * 4) + 1;
+                const b = Math.floor(Math.random() * 4) + 1;
                 ans = a + b;
                 text = `${a} + ${b} = ?`;
-                speech = `Сколько будет ${a} плюс ${b}?`;
+                visual = `${'🍎'.repeat(a)} + ${'🍎'.repeat(b)}`;
             } else {
-                const a = Math.floor(Math.random() * 6) + 3;
+                const a = Math.floor(Math.random() * 5) + 3;
                 const b = Math.floor(Math.random() * (a - 1)) + 1;
                 ans = a - b;
                 text = `${a} - ${b} = ?`;
-                speech = `Сколько будет ${a} минус ${b}?`;
+                visual = `${'⭐'.repeat(a)} − ${'⭐'.repeat(b)}`;
             }
 
             if (!mathHistory.includes(text)) {
-                task = { text, ans, speech };
+                task = { text, ans, visual };
                 mathHistory.push(text);
                 if (mathHistory.length > 15) mathHistory.shift();
                 break;
             }
         }
-        return task || { text: '2 + 3 = ?', ans: 5, speech: 'Сколько будет 2 плюс 3?' };
+        return task || { text: '2 + 3 = ?', ans: 5, visual: '🍎🍎 + 🍎🍎🍎' };
     }
 
     function initMathGame() {
         renderDots('math-progress', mathLessonStep);
         const task = generateMathTask();
         currentMathAnswer = task.ans;
-        currentMathSpeech = task.speech;
 
         document.getElementById('math-task').innerText = task.text;
-        speakText(task.speech);
+        document.getElementById('math-visual').innerText = task.visual;
 
         const choices = document.getElementById('math-choices');
         choices.innerHTML = '';
@@ -1280,21 +964,19 @@
             renderDots('math-progress', mathLessonStep);
 
             if (mathLessonStep >= LESSON_LENGTH) {
-                setTimeout(onLessonComplete, 1000);
+                setTimeout(onLessonComplete, 800);
             } else {
-                speakText('Верно! Замечательно!', () => {
-                    setTimeout(initMathGame, 800);
-                });
+                setTimeout(initMathGame, 800);
             }
         } else {
             vibrate(120);
-            speakText('Неправильно, подумай ещё!', () => {
+            setTimeout(() => {
                 document.querySelectorAll('#math-choices .choice-btn').forEach(b => b.disabled = false);
-            });
+            }, 600);
         }
     }
 
-    // === 10. МАГАЗИН ПОДАРКОВ ===
+    // === 9. МАГАЗИН ПОДАРКОВ ===
     function renderShop() {
         const grid = document.getElementById('wardrobe-items');
         grid.innerHTML = '';
@@ -1321,20 +1003,18 @@
 
         if (state.unlockedHats.includes(hatId)) {
             state.hat = hatId;
-            speakText('Красивый наряд!');
         } else if (state.stars >= price) {
             state.stars -= price;
             state.unlockedHats.push(hatId);
             state.hat = hatId;
             playTone('win');
-            speakText('Поздравляю с новым подарком!');
         } else {
-            speakText('Не хватает звёздочек!');
+            alert('Не хватает звёздочек!');
         }
         saveState();
     }
 
-    // === 11. ЛЕСНОЙ СНАЙПЕР (+3 ⭐) ===
+    // === 10. РОГАТКА ===
     let canvas, ctx;
     let animFrameId = null;
     let slingPos = { x: 75, y: 190 };
@@ -1460,7 +1140,6 @@
                 playTone('win');
                 vibrate(100);
                 addStars(3);
-                speakText('Точно в цель! Плюс три звёздочки!');
                 setTimeout(resetAngryBirdLevel, 1400);
             }
 
@@ -1497,38 +1176,7 @@
         animFrameId = requestAnimationFrame(updateAngryBird);
     }
 
-    // === 12. СТАРТ И ОБРАБОТКА ОШИБОК ===
-    window.onerror = function (message, source, line) {
-        const text = `${message} (${source || 'inline'}:${line || 0})`;
-        const box = document.getElementById('fatal-error');
-        const textEl = document.getElementById('fatal-error-text');
-        if (textEl) textEl.innerText = text;
-        if (box) box.classList.add('open');
-        document.body.classList.add('la-ready');
-    };
-
-    function boot() {
-        try {
-            updateUI();
-        } catch (e) {}
-        document.body.classList.add('la-ready');
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot);
-    } else {
-        boot();
-    }
-
-    window.addEventListener('pagehide', function () {
-        try {
-            storageSet('la_stars', state.stars);
-            storageSet('la_tree', state.treeLevel);
-            storageSet('la_tree_water', state.treeWaterCount);
-            storageSet('la_hat', state.hat);
-            storageSet('la_unlocked_hats', JSON.stringify(state.unlockedHats));
-        } catch (err) {}
-    });
+    updateUI();
 </script>
 
 </body>
